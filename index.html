@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tableau de Bord Météo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: #93C5FD;
+            color: #1E3A8A;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-weight: 300;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .weather-cards {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(8px);
+            transition: all 0.3s ease;
+            animation: fadeIn 0.8s forwards;
+            opacity: 0;
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .current-weather {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .current-main {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .temp {
+            font-size: 4rem;
+            font-weight: 700;
+            margin: 0 1rem;
+        }
+
+        .weather-icon {
+            width: 100px;
+            height: 100px;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            width: 100%;
+        }
+
+        .detail-item {
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .detail-label {
+            font-weight: 300;
+            font-size: 0.9rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .detail-value {
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .forecast-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .forecast-day {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .forecast-date {
+            font-weight: 300;
+            margin-bottom: 0.5rem;
+        }
+
+        .forecast-temp {
+            font-weight: 700;
+            margin-top: 0.5rem;
+        }
+
+        .forecast-icon {
+            width: 60px;
+            height: 60px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card:nth-child(1) { animation-delay: 0.1s; }
+        .card:nth-child(2) { animation-delay: 0.3s; }
+        .forecast-day { animation-delay: calc(0.1s * var(--delay)); }
+
+        @media (max-width: 768px) {
+            .details-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .current-main {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Tableau de Bord Météo</h1>
+        </header>
+
+        <div class="weather-cards">
+            <div class="card current-weather">
+                <div class="current-main">
+                    <img class="weather-icon" id="current-icon" src="" alt="Weather Icon">
+                    <div class="temp" id="current-temp">--°C</div>
+                </div>
+                <div class="details-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Ressenti</div>
+                        <div class="detail-value" id="feels-like">--°C</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Humidité</div>
+                        <div class="detail-value" id="humidity">--%</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Vent</div>
+                        <div class="detail-value" id="wind">-- km/h</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Pression</div>
+                        <div class="detail-value" id="pressure">-- hPa</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Prévisions sur 5 jours</h2>
+                <div class="forecast-container" id="forecast-container">
+                    <!-- Forecast items will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = 'INSÉREZ_VOTRE_CLÉ_API';
+        const CITY = 'Paris';
+        const API_URL = `https://api.openweathermap.org/data/2.5/forecast?q=${CITY}&appid=${API_KEY}&units=metric&lang=fr`;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchWeatherData();
+        });
+
+        async function fetchWeatherData() {
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                
+                if(data.cod === '200') {
+                    updateCurrentWeather(data.list[0]);
+                    updateForecast(data.list);
+                }
+            } catch (error) {
+                console.error('Erreur de récupération des données:', error);
+            }
+        }
+
+        function updateCurrentWeather(data) {
+            document.getElementById('current-temp').textContent = `${Math.round(data.main.temp)}°C`;
+            document.getElementById('feels-like').textContent = `${Math.round(data.main.feels_like)}°C`;
+            document.getElementById('humidity').textContent = `${data.main.humidity}%`;
+            document.getElementById('wind').textContent = `${Math.round(data.wind.speed * 3.6)} km/h`;
+            document.getElementById('pressure').textContent = `${data.main.pressure} hPa`;
+            
+            const iconCode = data.weather[0].icon;
+            document.getElementById('current-icon').src = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+        }
+
+        function updateForecast(forecastData) {
+            const forecastContainer = document.getElementById('forecast-container');
+            forecastContainer.innerHTML = '';
+            
+            // Filtrer pour un point par jour (12:00)
+            const dailyData = forecastData.filter((item, index) => index % 8 === 0).slice(0, 5);
+            
+            dailyData.forEach((day, index) => {
+                const date = new Date(day.dt * 1000);
+                const dayElement = document.createElement('div');
+                dayElement.className = 'forecast-day';
+                dayElement.style.setProperty('--delay', index + 1);
+                
+                dayElement.innerHTML = `
+                    <div class="forecast-date">${formatDate(date)}</div>
+                    <img class="forecast-icon" src="https://openweathermap.org/img/wn/${day.weather[0].icon}.png" alt="${day.weather[0].description}">
+                    <div class="forecast-temp">${Math.round(day.main.temp)}°C</div>
+                `;
+                
+                forecastContainer.appendChild(dayElement);
+            });
+        }
+
+        function formatDate(date) {
+            return date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' });
+        }
+    </script>
+</body>
+</html>
